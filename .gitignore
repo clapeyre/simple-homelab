@@ -1,0 +1,10 @@
+# /mnt/first_raid1/homelab_config/.gitignore
+
+# Ignore environment file with secrets
+.env
+
+# Ignore VS Code specific files if you use code-server to edit this folder
+.vscode/
+
+# Ignore any local Docker override files (if you decide to use them later)
+docker-compose.override.yml

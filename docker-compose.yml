@@ -1,0 +1,212 @@
+i# /mnt/first_raid1/homelab_config/docker-compose.yml
+version: '3.8'
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "8000:8000" # For Edge agent (optional)
+      - "9443:9443" # Main UI (HTTPS)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/first_raid1/docker_data/portainer/data:/data
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - /mnt/first_raid1/docker_data/heimdall/config:/config
+    ports:
+      - "8088:80"
+      - "8448:443"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+      # - SUDO_PASSWORD=${CODE_SERVER_PASSWORD} # Optional
+    volumes:
+      - /mnt/first_raid1/docker_data/codeserver/config:/config
+      - /mnt/first_raid1:/mnt/first_raid1 # Mount your whole RAID drive
+      - ./config/workspace/homelab_config # Map this project folder into code-server
+    ports:
+      - "8449:8443"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80/tcp"
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
+      # ServerIP: <Your_Pi_IP_Address> # Set this in .env if needed
+    volumes:
+      - /mnt/first_raid1/docker_data/pihole/etc-pihole:/etc/pihole
+      - /mnt/first_raid1/docker_data/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+    networks:
+      homelab-net: # Pi-hole might need a static IP on this custom network if other containers need to resolve through it by IP
+        # ipv4_address: 172.x.x.x # Define your desired static IP if needed. Ensure it's in the homelab-net subnet.
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - /mnt/first_raid1/docker_data/sonarr/config:/config
+      - /mnt/first_raid1/docker_data/jellyfin/media/tvshows:/tv
+      - /mnt/first_raid1/docker_data/downloads/completed:/downloads
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - /mnt/first_raid1/docker_data/radarr/config:/config
+      - /mnt/first_raid1/docker_data/jellyfin/media/movies:/movies
+      - /mnt/first_raid1/docker_data/downloads/completed:/downloads
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - /mnt/first_raid1/docker_data/prowlarr/config:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+      # - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL} # Set this in .env if needed (Your_Pi_IP_or_Domain)
+    volumes:
+      - /mnt/first_raid1/docker_data/jellyfin/config:/config
+      - /mnt/first_raid1/docker_data/jellyfin/media/tvshows:/data/tvshows
+      - /mnt/first_raid1/docker_data/jellyfin/media/movies:/data/movies
+    ports:
+      - "8096:8096"
+      - "8920:8920" # Optional HTTPS
+    group_add:
+      - "video"
+      # - "render" # Uncomment if 'render' group exists and is needed
+    # devices: # Uncomment and configure if you have hardware transcoding capabilities
+      # - /dev/dri:/dev/dri
+      # - /dev/vchiq:/dev/vchiq
+      # - /dev/video10:/dev/video10
+      # - /dev/video11:/dev/video11
+      # - /dev/video12:/dev/video12
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  deluge:
+    image: lscr.io/linuxserver/deluge:latest
+    container_name: deluge
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Paris}
+      - DELUGE_LOGLEVEL=error
+    volumes:
+      - /mnt/first_raid1/docker_data/deluge/config:/config
+      - /mnt/first_raid1/docker_data/downloads:/downloads
+    ports:
+      - "8112:8112"
+      - "6881:6881"
+      - "6881:6881/udp"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  pico-wallet:
+    image: ghcr.io/clapeyre/pico-wallet-server:latest
+    container_name: pico-wallet
+    environment:
+      - PUID=1000 # Check if this image respects PUID/PGID
+      - PGID=1000 # Check if this image respects PUID/PGID
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - /mnt/first_raid1/docker_data/pico-wallet/data:/app/data # Assuming the app stores data in /app/data, adjust if needed
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+# Optional Netdata service (uncomment if needed)
+  #netdata:
+  #  image: lscr.io/linuxserver/netdata:latest
+  #  container_name: netdata
+  #  environment:
+  #    - PUID=1000
+  #    - PGID=1000
+  #    - TZ=${TZ:-Europe/Paris}
+  #  ports:
+  #    - "19999:19999"
+  #  cap_add:
+  #    - SYS_PTRACE
+  #  security_opt:
+  #    - apparmor:unconfined
+  #  volumes:
+  #    - /mnt/first_raid1/docker_data/netdata/config:/config
+  #    - /proc:/host/proc:ro
+  #    - /sys:/host/sys:ro
+  #    - /var/run/docker.sock:/var/run/docker.sock:ro
+  #  restart: unless-stopped
+  #  networks:
+  #    - homelab-net
+
+networks:
+  homelab-net:
+    driver: bridge
+    # You can define a subnet if you want more control, e.g.:
+    # ipam:
+    #   config:
+    #     - subnet: 172.20.0.0/24
