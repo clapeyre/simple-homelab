@@ -1,5 +1,4 @@
-i# /mnt/first_raid1/homelab_config/docker-compose.yml
-version: '3.8'
+# /mnt/first_raid1/homelab_config/docker-compose.yml
 
 services:
   portainer:
