@@ -1,0 +1,19 @@
+# ./services/development.yml
+services:
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/codeserver/config:/config
+      - ${HOST_RAID_MOUNT_PATH}:/mnt/host_raid # Mount your whole RAID drive
+      - ${HOST_HOMELAB_CONFIG_PATH}:/config/workspace/homelab_config # Map this project folder
+    ports:
+      - "8449:8443"
+    restart: unless-stopped
+    networks:
+      - homelab-net

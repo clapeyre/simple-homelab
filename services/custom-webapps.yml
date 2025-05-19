@@ -1,0 +1,16 @@
+# ./services/custom-webapps.yml
+services:
+  pico-wallet:
+    image: ghcr.io/clapeyre/pico-wallet-server:latest
+    container_name: pico-wallet
+    environment:
+      - PUID=${PUID} # Assuming this image respects these
+      - PGID=${PGID} # Assuming this image respects these
+      - TZ=${TZ}
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/pico-wallet/data:/app/data # Adjust /app/data if needed
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    networks:
+      - homelab-net

@@ -1,0 +1,50 @@
+# ./services/core.yml
+services:
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/heimdall/config:/config
+    ports:
+      - "8088:80"
+      - "8448:443"
+    restart: unless-stopped
+    networks:
+      - homelab-net
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "8000:8000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOST_DOCKER_DATA_PATH}/portainer/data:/data
+    restart: unless-stopped
+    networks:
+      - homelab-net # Use the network defined in the main compose file
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80/tcp"
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
+      ServerIP: ${PIHOLE_SERVERIP:-} # Pass from .env, can be empty
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/pihole/etc-pihole:/etc/pihole
+      - ${HOST_DOCKER_DATA_PATH}/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+    networks:
+      homelab-net:
+        # If Pi-hole needs a static IP on this network:
+        # ipv4_address: 172.x.x.x # Define its IP if other containers resolve via it by IP

@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node_exporter:9100'] # Using Docker service discovery
+
+  # Example for scraping Cadvisor if you add it later
+  # - job_name: 'cadvisor'
+  #   static_configs:
+  #     - targets: ['cadvisor:8080']
+
+  # Add other services you want to monitor here
+  # For example, if a service exposes a /metrics endpoint:
+  # - job_name: 'my_app_service_name_in_docker_compose'
+  #   static_configs:
+  #     - targets: ['my_app_service_name_in_docker_compose:port']

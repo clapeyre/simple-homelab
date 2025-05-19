@@ -1,0 +1,66 @@
+# ./services/monitoring.yml
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    user: "${PUID}:${PGID}"
+    volumes:
+      - ${HOST_HOMELAB_CONFIG_PATH}/prometheus_config:/etc/prometheus # Mount local config dir
+      - ${HOST_DOCKER_DATA_PATH}/prometheus/data:/prometheus # Prometheus data on RAID
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=https://${RPI_TAILSCALE_DOMAIN}/prometheus' # From .env
+      - '--web.route-prefix=/'
+    expose: # Only exposed within Docker network, not to host by default
+      - "9090"
+    networks:
+      - monitoring_net # Dedicated monitoring network
+      - homelab-net    # Also on homelab-net if other services need to scrape it or vice-versa
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    user: "${PUID}:${PGID}"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+    expose: # Only exposed within Docker network
+      - "9100"
+    networks:
+      - monitoring_net # On monitoring network for Prometheus to scrape
+      - homelab-net    # Can also be on homelab-net
+    restart: unless-stopped
+    pid: host # Required for full metrics access
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: "${PUID}:${PGID}"
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/grafana/data:/var/lib/grafana # Grafana data on RAID
+      - ${HOST_HOMELAB_CONFIG_PATH}/grafana_provisioning:/etc/grafana/provisioning # Mount local provisioning
+    ports: # Grafana is typically accessed directly via browser
+      - "3000:3000"
+    networks:
+      - monitoring_net # Can talk to Prometheus on this network
+      - homelab-net
+    restart: unless-stopped
+    environment: # From your monitoring file and .env
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=5s
