@@ -64,3 +64,19 @@ services:
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=5s
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only access to Docker socket
+    ports:
+      - "${DOZZLE_PORT:-8082}:8080" # Map to host port (default 8082 if not in .env)
+    # environment: # Optional: Dozzle specific environment variables if needed
+      # - DOZZLE_NO_ANALYTICS=true # Example: Disable analytics
+      # - DOZZLE_FILTER="status=running" # Example: Only show running containers
+      # - DOZZLE_ADDR=0.0.0.0:8080
+      # - DOZZLE_BASE=/dozzle # If you want to run it under a subpath (requires reverse proxy setup)
+    restart: unless-stopped
+    networks:
+      - homelab-net # So you can access it via the Pi's IP on your local network
