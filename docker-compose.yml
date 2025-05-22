@@ -21,5 +21,7 @@ include:
   - path: ./services/development.yml
   - path: ./services/media.yml
   - path: ./services/monitoring.yml
+  - path: ./services/homeautomation.yml
+  - path: ./services/files.yml
   - path: ./services/custom-webapps.yml
   # - path: ./services/another_group.yml # Example: comment out to disable

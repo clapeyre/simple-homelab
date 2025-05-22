@@ -1,0 +1,7 @@
+services:
+  postbaby:
+    image: postbaby:latest
+    container_name: postbaby-container
+    ports:
+      - "8089:80" # Example: map host port 8080 to container port 80 (adjust as needed)
+    restart: unless-stopped

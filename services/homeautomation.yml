@@ -1,0 +1,28 @@
+# ./services/homeautomation.yml
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/homeassistant/config:/config # Persistent configuration
+      - /etc/localtime:/etc/localtime:ro # Sync timezone with host, read-only
+      # - /var/run/dbus:/var/run/dbus:ro # Optional: Only if integrations require D-Bus
+    ports:
+      - "8123:8123" # Home Assistant web UI
+    environment:
+      - TZ=${TZ} # From your .env file
+      # PUID and PGID are not typically used by the official Home Assistant container
+      # as it manages its internal permissions.
+    restart: unless-stopped
+    networks:
+      - homelab-net
+    # --- Future Considerations for Hardware (Zigbee/Z-Wave/etc.) ---
+    # If you add USB devices like Zigbee or Z-Wave sticks, you'll need to
+    # pass them through to the container and ensure proper permissions.
+    # This often requires adding the 'dialout' group or similar.
+    # Example (uncomment and adjust as needed when you have hardware):
+    # group_add:
+    #   - dialout # Or the GID of the group that owns the USB device on the host
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0 # Adjust to your device path, e.g., /dev/ttyACM0
+    # privileged: true # May be required for some hardware access, use with caution.
