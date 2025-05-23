@@ -1,7 +1,49 @@
 services:
   postbaby:
     image: postbaby:latest
-    container_name: postbaby-container
+    container_name: postbaby
     ports:
       - "8089:80" # Example: map host port 8080 to container port 80 (adjust as needed)
     restart: unless-stopped
+
+  redis-paperless:
+    image: redis:7-alpine # Using a specific version of the Alpine variant for stability and size
+    container_name: redis_paperless
+    restart: unless-stopped
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/redis/paperless_data:/data
+    networks:
+      - homelab-net
+    # No ports exposed to host, Paperless-ngx will connect via Docker network
+
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless_ngx
+    depends_on:
+      - redis-paperless # Ensures Redis starts before Paperless-ngx
+    ports:
+      - "${PAPERLESS_PORT:-8077}:8000"
+    volumes:
+      - ${HOST_DOCKER_DATA_PATH}/paperlessngx/data:/usr/src/paperless/data
+      - ${HOST_DOCKER_DATA_PATH}/paperlessngx/media:/usr/src/paperless/media
+      - ${HOST_DOCKER_DATA_PATH}/paperlessngx/consume:/usr/src/paperless/consume
+      - ${HOST_DOCKER_DATA_PATH}/paperlessngx/export:/usr/src/paperless/export
+      # Optional: if you use GnuPG for encryption, uncomment and set up:
+      # - ${HOST_DOCKER_DATA_PATH}/paperlessngx/gpg:/usr/src/paperless/gpg
+    environment:
+      PAPERLESS_REDIS: redis://redis-paperless:6379 # Connect to Redis container by service name
+      PAPERLESS_DBENGINE: sqlite # Explicitly stating SQLite, though it's the default
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      TZ: ${TZ}
+      USERMAP_UID: ${PUID} # Ensure files are owned by your host user
+      USERMAP_GID: ${PGID} # Ensure files are owned by your host user group
+      PAPERLESS_CONSUMER_POLLING_INTERVAL: "60" # Default is 60s
+      PAPERLESS_CONSUMER_RECURSIVE_MODE: "true" # Default
+      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: "true" # Default
+      PAPERLESS_OCR_LANGUAGES: ${PAPERLESS_OCR_LANGUAGES:-eng} # Default to 'eng' if not set
+      # PAPERLESS_URL: https://your.paperless.domain # Set this if you access Paperless-ngx via a reverse proxy with a specific domain
+      PAPERLESS_ADMIN_USER: pi_admin
+      PAPERLESS_ADMIN_PASSWORD: toto
+    restart: unless-stopped
+    networks:
+      - homelab-net
